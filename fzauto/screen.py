@@ -155,7 +155,9 @@ def find_window(title: str) -> Rect | None:
              and rect.y2 > 0 and rect.x2 > 0]
     if not valid:
         return None
-    # 标题完全一致的优先, 否则取最大的窗口
+    # 同名窗口有多个时, 优先竖屏投屏窗口, 再按面积排序
+    valid.sort(key=lambda item: (-mirror_score(item[0], item[1]),
+                                 -(item[1].width * item[1].height)))
     for win_title, rect in valid:
         if win_title.strip().lower() == title:
             return rect

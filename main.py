@@ -307,16 +307,18 @@ def setup(cfg: Config) -> None:
             cfg.save()
 
     print("\n[5/5] 听力页按钮 (可跳过)")
-    print("  打开一道听力题, 依次记录“播放 / 录音 / 提交”三个按钮")
-    print("  如果听力页没有文字按钮, 这一步能避免点错位置")
+    print("  打开一道听力题, 依次记录四个位置:")
+    print("  左扬声器(播放)、中间话筒(录音)、右波形(评分/提交)、右下箭头(下一题)")
     if input("校准听力按钮? [y/N]: ").strip().lower() == "y":
-        play = _record_point("播放按钮")
-        record = _record_point("录音/开始录音按钮")
-        submit = _record_point("提交/完成按钮")
+        play = _record_point("左扬声器/播放")
+        record = _record_point("中间话筒/录音")
+        submit = _record_point("右波形/评分或提交")
+        next_button = _record_point("右下箭头/下一题")
         listen = {
             "play": play,
             "record": record,
             "submit": submit,
+            "next": next_button,
         }
         if any(listen.values()):
             cfg.set("listen", listen)
@@ -395,6 +397,13 @@ def doctor(cfg: Config) -> None:
         emit(f"paddleocr: {getattr(paddleocr, '__version__', '未知')}")
     except Exception as exc:
         emit(f"paddleocr: 未安装或导入失败 ({exc})")
+
+    try:
+        from fzauto.words import Lexicon
+        lexicon = Lexicon(cfg)
+        emit(f"本地词库: {len(lexicon)} 词 (cache/vocab.json 或 data/vocab.json.gz)")
+    except Exception as exc:
+        emit(f"本地词库加载失败: {exc}")
 
     emit("")
     emit("--- 可选的投屏窗口 (★ 为疑似手机投屏) ---")

@@ -12,6 +12,10 @@ cache/
 vocab_tmp/
 *.log
 
+# 词库原始文件 (发行包只保留 data/vocab.json.gz)
+data/vocab.json
+data/vocab.pkl
+
 # 旧版脚本与第三方工具
 auto_homework.py
 tools/platform-tools/

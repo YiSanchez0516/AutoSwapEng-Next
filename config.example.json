@@ -16,7 +16,9 @@
   "listen": {
     "play": null,
     "record": null,
-    "submit": null
+    "submit": null,
+    "next": null,
+    "auto_flow": true
   },
   "auto_enter_reinforce": true,
   "pack_memory": true,

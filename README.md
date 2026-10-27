@@ -89,13 +89,16 @@ run.bat doctor                 :: 生成诊断报告
 - 如果截图是黑屏：在 OPPO 互联设置中关闭“高清画质 / 硬件加速 / 隐私保护”，或改用 scrcpy 投屏
 - 若窗口包含工具栏/侧边栏，建议只框选手机画面，滑动和点击会更准确
 
-## 词库（可选，但推荐）
+## 词库（发行包已内置）
+
+发行包自带从 **ECDICT** 生成的英汉词库：`data/vocab.json.gz`，约 **10.7 万词、30 万义项**，解压后约 12 MB，采用 ECDICT 的 MIT 协议（见 `data/LICENSE-ECDICT.txt`）。本地存在 `cache/vocab.json` 时优先使用本地词库。
 
 程序按以下顺序获取释义：
 
-1. 本地 `cache/vocab.json`（CET4/CET6/高中词表，需自行生成）
-2. **ECDICT** 离线词典（强烈推荐）
-3. 有道 / Bing 在线词典（需联网）
+1. 本地 `cache/vocab.json`（CET4/CET6/高中词表 + ECDICT，可由 `tools/build_vocab.py` 生成）
+2. `data/vocab.json.gz`（发行包自带 ECDICT 词库）
+3. **ECDICT** 离线词典（可自行配置，词条更全）
+4. 有道 / Bing 在线词典（需联网）
 
 ### 配置 ECDICT
 
@@ -124,10 +127,18 @@ vocab_tmp/gaozhong/GaoZhong_2.json
 然后运行：
 
 ```bat
-.venv\Scripts\python.exe tools\build_vocab.py
+set ECDICT_DB=D:\dict\stardict.db
+python tools\build_vocab.py --out cache\vocab.json
+python tools\verify_vocab.py --vocab cache\vocab.json
 ```
 
-会生成 `cache/vocab.json`。词表来源请遵循其各自许可证。
+只使用 ECDICT 生成可再分发的词库：
+
+```bat
+python tools\build_vocab.py --ecdict-only --out data\vocab.json
+```
+
+`tools/verify_vocab.py` 会检查词条结构、已知单词（bridge/intense/built/caught/chosen 等）并与 ECDICT 抽样比对，报告写入 `logs/vocab-report.txt`。词表来源请遵循其各自许可证。
 
 ## 配置项
 
@@ -139,7 +150,8 @@ vocab_tmp/gaozhong/GaoZhong_2.json
 | `bbox` | 截图区域 `[x1, y1, x2, y2]`，屏幕物理像素 |
 | `keyboard.bbox` | 拼写页屏幕键盘区域（可校准） |
 | `spell_input` | 拼写输入框点击位置 `[x, y]` |
-| `listen.play` / `listen.record` / `listen.submit` | 听力页三个按钮的屏幕坐标（`setup` 第 5 步校准） |
+| `listen.play` / `listen.record` / `listen.submit` / `listen.next` | 听力页四个按钮的屏幕坐标（`setup` 第 5 步校准） |
+| `listen.auto_flow` | `true`：播放→录音→评分→下一题；`false`：只播放并等待，默认 `true` |
 | `auto_enter_reinforce` | 学习结算后是否自动进入强化阶段，默认 `true` |
 | `pack_memory` | 跨运行记住当前卡包单词与错词，默认 `true` |
 | `write_canvas` | 手写板区域 `[x1, y1, x2, y2]` |
@@ -182,9 +194,10 @@ vocab_tmp/gaozhong/GaoZhong_2.json
 
 **听力页点击位置不对**
 
-- 重新运行 `setup` 第 5 步，依次校准“播放 / 录音 / 提交”三个按钮
+- 听力对话页底部有四个控件：左扬声器（播放）、中间话筒（录音）、右波形（评分/提交）、右下箭头（下一题）
+- 程序默认按截图比例点击；窗口有标题栏或缩放时，运行 `setup` 第 5 步依次校准这四个位置
 - 校准坐标只在当前窗口位置有效；窗口移动后需重新校准
-- 程序也会优先尝试识别页面上的“播放 / 录音 / 提交”文字按钮
+- 如果只想听、不想录音，把 `config.json` 的 `listen.auto_flow` 改为 `false`
 
 **想复盘错题 / 单词识别错误**
 
@@ -207,7 +220,12 @@ fzauto/
   runner.py          主循环
 tools/
   build_vocab.py     生成本地词库
+  verify_vocab.py    校验词库结构与释义
   sim_cases.json     离线选择题测试用例
+data/
+  vocab.json.gz      发行包自带 ECDICT 词库
+  vocab-meta.json    词库版本/数量/校验值
+  LICENSE-ECDICT.txt ECDICT MIT 许可证
 install.bat/.ps1     安装脚本
 run.bat              启动脚本
 doctor.bat           诊断脚本

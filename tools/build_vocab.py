@@ -4,6 +4,7 @@
 详细释义形如 "n:跑,赛跑|v:跑,运行", 保留每个词性下的全部义项(含生僻义).
 """
 
+import argparse
 import json
 import os
 import pickle
@@ -112,6 +113,14 @@ def parse_exchange(value: str) -> list[str]:
     return forms
 
 
+def clone_entry(data: dict) -> dict:
+    return {
+        "segments": list(data["segments"]),
+        "pos": set(data["pos"]),
+        "groups": {label: list(items) for label, items in data["groups"].items()},
+    }
+
+
 def parse_pos_column(value: str) -> list[str]:
     """解析 ECDICT 的 pos 列(如 "n:100/v:20"), 返回按权重排序的词性."""
     mapping = {"n": "n", "v": "v", "j": "adj", "r": "adv", "c": "conj", "p": "prep"}
@@ -171,26 +180,26 @@ def add_ecdict(vocab: dict[str, dict]) -> None:
             pending_forms.append((key, exchange))
     conn.close()
 
-    # 第二遍补变形词(复数/过去式/比较级等), 原形优先, 已存在的词不覆盖
+    # 第二遍补变形词(复数/过去式/比较级等)
+    # 注意: ECDICT 里很多变形词自己也有条目, 但释义只有“build的过去式”这类语法说明,
+    # 解析后为空. 这里允许用原形释义补全这些空词条, 否则 built/caught/chosen 会缺失.
     derived = 0
+    filled = 0
     for key, exchange in pending_forms:
         data = vocab.get(key)
         if not data or not data["segments"]:
             continue
         for form in parse_exchange(exchange):
-            if (
-                form != key
-                and form.isalpha()
-                and 2 <= len(form) <= 24
-                and form not in vocab
-            ):
-                vocab[form] = {
-                    "segments": list(data["segments"]),
-                    "pos": set(data["pos"]),
-                    "groups": {label: list(items) for label, items in data["groups"].items()},
-                }
+            if form == key or not form.isalpha() or not (2 <= len(form) <= 24):
+                continue
+            existing = vocab.get(form)
+            if existing is None:
+                vocab[form] = clone_entry(data)
                 derived += 1
-    print(f"ecdict: {count} entries, {derived} derived forms")
+            elif not existing["segments"]:
+                vocab[form] = clone_entry(data)
+                filled += 1
+    print(f"ecdict: {count} entries, {derived} derived forms, {filled} empty forms filled")
 
 
 def add_cet_source(vocab: dict[str, dict], path: Path) -> int:
@@ -226,8 +235,15 @@ def add_cet_source(vocab: dict[str, dict], path: Path) -> int:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build the local vocabulary.")
+    parser.add_argument("--out", default=str(OUT), help="output vocab.json path")
+    parser.add_argument("--ecdict-only", action="store_true",
+                        help="do not read CET4/CET6/high-school sources")
+    args = parser.parse_args()
+
     vocab: dict[str, dict] = {}
-    for path in SOURCES:
+    sources = [] if args.ecdict_only else SOURCES
+    for path in sources:
         if not path.exists():
             print(f"skip missing {path}")
             continue
@@ -256,14 +272,16 @@ def main() -> None:
         out[key] = [segments, pos_list, detail or "其他:" + ",".join(segments)]
 
     OUT.parent.mkdir(exist_ok=True)
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=0), encoding="utf-8")
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(out, ensure_ascii=False, indent=0), encoding="utf-8")
     # 同时输出 pickle, 脚本启动时优先读取, 加载速度更快
-    with OUT.with_suffix(".pkl").open("wb") as handle:
+    with out_path.with_suffix(".pkl").open("wb") as handle:
         pickle.dump(out, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     print(
         f"total {len(out)} words, {sense_total} senses, "
-        f"{multi_pos} multi-pos words, dropped {dropped} empty -> {OUT}"
+        f"{multi_pos} multi-pos words, dropped {dropped} empty -> {out_path}"
     )
 
 

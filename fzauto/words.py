@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import math
+import os
 import pickle
 import re
 import sqlite3
@@ -13,7 +15,7 @@ import urllib.request
 from pathlib import Path
 from typing import Iterable
 
-from .config import CACHE_DIR, Config
+from .config import CACHE_DIR, ROOT, Config
 
 CN_RE = re.compile(r"[\u4e00-\u9fff]")
 POS_RE = re.compile(r"\b(vt|vi|v|n|adj|adv|prep|pron|conj|num|art|int|aux)\.")
@@ -22,11 +24,13 @@ ECDICT_POS_RE = re.compile(r"^(vt|vi|v|n|adj|adv|a|ad|prep|pron|conj|num|art|int
 SEG_SPLIT_RE = re.compile(r"[；;，,、/|]")
 NOISE_RE = re.compile(r"[\[【（(][^\]】）)]*[\]】）)]")
 
-VOCAB_FILE = CACHE_DIR / "vocab.json"
+VOCAB_FILE = Path(os.environ.get("FZ_VOCAB_FILE", str(CACHE_DIR / "vocab.json")))
 STUDY_FILE = CACHE_DIR / "study.json"
 LEARNED_FILE = CACHE_DIR / "learned.json"
 DICT_CACHE_FILE = CACHE_DIR / "dict_cache.json"
-REVERSE_CACHE = CACHE_DIR / "reverse_index.pkl"
+REVERSE_CACHE = Path(os.environ.get("FZ_REVERSE_CACHE", str(CACHE_DIR / "reverse_index.pkl")))
+# 发行包自带的 ECDICT 词库 (gzip), 本地 cache 不存在时使用
+DATA_VOCAB = ROOT / "data" / "vocab.json.gz"
 
 
 def compact(text: str) -> str:
@@ -88,6 +92,13 @@ class Lexicon:
                 data = json.loads(VOCAB_FILE.read_text(encoding="utf-8"))
         except (OSError, ValueError, pickle.PickleError, EOFError):
             data = None
+        if not isinstance(data, dict) and DATA_VOCAB.exists():
+            # 本地还没有生成词库时, 使用发行包内置的 ECDICT 词库
+            try:
+                with gzip.open(DATA_VOCAB, "rt", encoding="utf-8") as handle:
+                    data = json.load(handle)
+            except (OSError, json.JSONDecodeError):
+                data = None
         if isinstance(data, dict):
             for word, value in data.items():
                 if isinstance(value, list) and len(value) >= 2:

@@ -445,6 +445,10 @@ class Runner:
             time.sleep(0.4)
             return
 
+        if self._is_dialogue_page(scene):
+            self._handle_dialogue(rect, scene, key)
+            return
+
         if scene.has("当前卡包已完成"):
             point = self._listen_point("submit", rect)
             if point:
@@ -506,6 +510,64 @@ class Runner:
             self.counts["listen"] += 1
             return
         self.controller.swipe(rect, 0.5, 0.74, 0.5, 0.40)
+
+    @staticmethod
+    def _is_dialogue_page(scene: Scene) -> bool:
+        """短对话/听力页: 只有英文原文、中文翻译和底部三个圆形按钮."""
+        text = scene.compact
+        if "已播放" in text:
+            return True
+        return "短对话" in text or "长对话" in text
+
+    def _handle_dialogue(self, rect: Rect, scene: Scene, key: str) -> None:
+        """按截图布局: 左播放 -> 中录音 -> 右评分 -> 右下箭头下一题.
+
+        这个页面只有图标没有文字按钮, 必须用校准坐标或固定比例,
+        不能去点“已播放第N遍”这类文字.
+        """
+        flow = bool(self.cfg.get("listen.auto_flow", True))
+        phase = self.listen_state.get(key, "")
+        if phase == "done":
+            time.sleep(0.8)
+            return
+        if not phase:
+            self._click_fixed(rect, key, "play", (0.271, 0.830), "播放")
+            self.listen_state[key] = "played"
+            time.sleep(4.0)
+            return
+        if not flow and phase == "played":
+            # 只播放模式: 播完后直接下一题
+            self._click_fixed(rect, key, "next", (0.927, 0.910), "下一题")
+            self.listen_state[key] = "done"
+            time.sleep(1.5)
+            return
+        if flow and phase == "played":
+            self._click_fixed(rect, key, "record", (0.495, 0.830), "录音")
+            self.listen_state[key] = "recorded"
+            time.sleep(3.5)
+            return
+        if flow and phase == "recorded":
+            self._click_fixed(rect, key, "submit", (0.721, 0.830), "评分/提交")
+            self.listen_state[key] = "submitted"
+            time.sleep(1.5)
+            return
+        if flow and phase == "submitted":
+            self._click_fixed(rect, key, "next", (0.927, 0.910), "下一题")
+            self.listen_state[key] = "done"
+            time.sleep(1.5)
+
+    def _click_fixed(self, rect: Rect, key: str, name: str,
+                     fallback: tuple[float, float], label: str) -> None:
+        point = self._listen_point(name, rect)
+        if point:
+            self.log(f"   听力: 点击{label}(校准) {point}")
+            self.controller.click(*point, settle=0.5)
+        else:
+            target = rect.point(*fallback)
+            self.log(f"   听力: 点击{label}(比例) {target}; "
+                     f"若位置不对请运行 setup 第 5 步校准")
+            self.controller.click(*target, settle=0.5)
+        self._action_time[key] = time.time()
 
     def _listen_point(self, name: str, rect: Rect) -> tuple[int, int] | None:
         points = self.cfg.get("listen") or {}

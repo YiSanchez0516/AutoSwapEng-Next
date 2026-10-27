@@ -30,8 +30,15 @@ DEFAULTS: dict[str, Any] = {
     "keyboard": {"bbox": None, "template": True},
     # 拼写页输入框的大致点击位置 [x, y], 不填时自动推断
     "spell_input": None,
-    # 听力页按钮的屏幕坐标 {"play": [x,y], "record": [x,y], "submit": [x,y]}
-    "listen": {"play": None, "record": None, "submit": None},
+    # 听力页按钮的屏幕坐标 {"play": [x,y], "record": [x,y], "submit": [x,y], "next": [x,y]}
+    "listen": {
+        "play": None,
+        "record": None,
+        "submit": None,
+        "next": None,
+        # true: 播放 -> 录音 -> 评分 -> 下一题; false: 只播放并等待
+        "auto_flow": True,
+    },
     # 学习结算后自动进入“强化/巩固”阶段
     "auto_enter_reinforce": True,
     # 跨运行记住当前卡包的学习单词/错词
