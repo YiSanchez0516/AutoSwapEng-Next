@@ -307,23 +307,19 @@ def setup(cfg: Config) -> None:
             cfg.save()
 
     print("\n[5/5] 听力页按钮 (可跳过)")
-    print("  打开一道听力题, 依次记录四个位置:")
-    print("  左扬声器(播放)、中间话筒(录音)、右波形(评分/提交)、右下箭头(下一题)")
+    print("  听力页只需要校准两个位置:")
+    print("  左扬声器(播放一次)、右下箭头(提交并进入下一题)")
+    print("  右波形是“听自己的录音”, 中间话筒是录音, 自动流程不会点击它们")
     if input("校准听力按钮? [y/N]: ").strip().lower() == "y":
         play = _record_point("左扬声器/播放")
-        record = _record_point("中间话筒/录音")
-        submit = _record_point("右波形/评分或提交")
-        next_button = _record_point("右下箭头/下一题")
-        listen = {
-            "play": play,
-            "record": record,
-            "submit": submit,
-            "next": next_button,
-        }
-        if any(listen.values()):
+        next_button = _record_point("右下箭头/提交并下一题")
+        listen = dict(cfg.get("listen") or {})
+        listen["play"] = play
+        listen["next"] = next_button
+        if any(listen.get(key) for key in ("play", "next")):
             cfg.set("listen", listen)
             cfg.save()
-            print(f"听力按钮: {listen}")
+            print(f"听力按钮: play={play}, next={next_button}")
 
     print(f"\n配置已保存: {CONFIG_FILE}")
     print("下一步: python main.py shot 检查 OCR 是否能读清题目, 再运行 python main.py run")

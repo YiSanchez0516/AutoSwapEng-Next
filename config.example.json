@@ -18,7 +18,10 @@
     "record": null,
     "submit": null,
     "next": null,
-    "auto_flow": true
+    "auto_flow": true,
+    "play_wait": 2.0,
+    "arrow_clicks": 3,
+    "arrow_interval": 0.4
   },
   "auto_enter_reinforce": true,
   "pack_memory": true,

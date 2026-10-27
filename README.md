@@ -65,7 +65,9 @@ python -m venv .venv
 4. 选 `3` 抓屏 + OCR 诊断，确认能读清题目
 5. 选 `2` 开始自动答题
 
-程序会自动识别当前处于 **学习卡片 / 答题 / 强化巩固** 哪个阶段，并在学习结算页自动点“进入强化”。如果听力页没有文字按钮，重新运行 `setup` 第 5 步，依次把鼠标放到“播放 / 录音 / 提交”按钮上完成校准。
+程序会自动识别当前处于 **学习卡片 / 答题 / 强化巩固** 哪个阶段，并在学习结算页自动点“进入强化”。
+
+听力对话页的自动流程：**只点一次左扬声器播放，然后连续点击右下角箭头 3 次**（提交并进入下一题）。右波形是“听自己的录音”，中间话筒是录音，自动流程不会点击它们。如果听力页按钮位置有偏移，运行 `setup` 第 5 步校准“播放”和“右下箭头”两个位置即可。
 
 常用命令：
 
@@ -150,8 +152,10 @@ python tools\build_vocab.py --ecdict-only --out data\vocab.json
 | `bbox` | 截图区域 `[x1, y1, x2, y2]`，屏幕物理像素 |
 | `keyboard.bbox` | 拼写页屏幕键盘区域（可校准） |
 | `spell_input` | 拼写输入框点击位置 `[x, y]` |
-| `listen.play` / `listen.record` / `listen.submit` / `listen.next` | 听力页四个按钮的屏幕坐标（`setup` 第 5 步校准） |
-| `listen.auto_flow` | `true`：播放→录音→评分→下一题；`false`：只播放并等待，默认 `true` |
+| `listen.play` / `listen.next` | 听力页“左扬声器播放”和“右下箭头提交/下一题”的屏幕坐标（`setup` 第 5 步校准） |
+| `listen.auto_flow` | `true`：播放一次后连续点右下箭头；`false`：只播放，默认 `true` |
+| `listen.play_wait` | 播放后等待秒数，默认 2.0 |
+| `listen.arrow_clicks` / `listen.arrow_interval` | 右下箭头连点次数/间隔，默认 3 次 / 0.4 秒 |
 | `auto_enter_reinforce` | 学习结算后是否自动进入强化阶段，默认 `true` |
 | `pack_memory` | 跨运行记住当前卡包单词与错词，默认 `true` |
 | `write_canvas` | 手写板区域 `[x1, y1, x2, y2]` |
@@ -194,10 +198,12 @@ python tools\build_vocab.py --ecdict-only --out data\vocab.json
 
 **听力页点击位置不对**
 
-- 听力对话页底部有四个控件：左扬声器（播放）、中间话筒（录音）、右波形（评分/提交）、右下箭头（下一题）
-- 程序默认按截图比例点击；窗口有标题栏或缩放时，运行 `setup` 第 5 步依次校准这四个位置
+- 听力对话页底部：左扬声器（播放）、中间话筒（录音）、右波形（听自己的录音）、右下箭头（提交并下一题）
+- 自动流程只点“左扬声器一次 + 右下箭头连续 3 次”，不会点录音和右波形
+- 程序默认按截图比例点击；窗口有标题栏或缩放时，运行 `setup` 第 5 步校准“播放”和“右下箭头”
 - 校准坐标只在当前窗口位置有效；窗口移动后需重新校准
-- 如果只想听、不想录音，把 `config.json` 的 `listen.auto_flow` 改为 `false`
+- 想调整连点次数/间隔：修改 `listen.arrow_clicks`、`listen.arrow_interval`
+- 只想播放、不自动下一题：把 `listen.auto_flow` 改为 `false`
 
 **想复盘错题 / 单词识别错误**
 

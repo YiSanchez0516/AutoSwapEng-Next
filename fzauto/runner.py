@@ -520,41 +520,29 @@ class Runner:
         return "短对话" in text or "长对话" in text
 
     def _handle_dialogue(self, rect: Rect, scene: Scene, key: str) -> None:
-        """按截图布局: 左播放 -> 中录音 -> 右评分 -> 右下箭头下一题.
+        """听力对话页: 左扬声器播放一次, 然后连续点右下角箭头提交并下一题.
 
-        这个页面只有图标没有文字按钮, 必须用校准坐标或固定比例,
-        不能去点“已播放第N遍”这类文字.
+        右波形是“听自己的录音”, 不点; 中间话筒也不需要点.
         """
         flow = bool(self.cfg.get("listen.auto_flow", True))
         phase = self.listen_state.get(key, "")
         if phase == "done":
-            time.sleep(0.8)
+            time.sleep(0.6)
             return
         if not phase:
             self._click_fixed(rect, key, "play", (0.271, 0.830), "播放")
             self.listen_state[key] = "played"
-            time.sleep(4.0)
-            return
-        if not flow and phase == "played":
-            # 只播放模式: 播完后直接下一题
-            self._click_fixed(rect, key, "next", (0.927, 0.910), "下一题")
-            self.listen_state[key] = "done"
-            time.sleep(1.5)
+            time.sleep(float(self.cfg.get("listen.play_wait", 2.0) or 2.0))
             return
         if flow and phase == "played":
-            self._click_fixed(rect, key, "record", (0.495, 0.830), "录音")
-            self.listen_state[key] = "recorded"
-            time.sleep(3.5)
-            return
-        if flow and phase == "recorded":
-            self._click_fixed(rect, key, "submit", (0.721, 0.830), "评分/提交")
-            self.listen_state[key] = "submitted"
-            time.sleep(1.5)
-            return
-        if flow and phase == "submitted":
-            self._click_fixed(rect, key, "next", (0.927, 0.910), "下一题")
+            clicks = int(self.cfg.get("listen.arrow_clicks", 3) or 3)
+            interval = float(self.cfg.get("listen.arrow_interval", 0.4) or 0.4)
+            for index in range(max(1, clicks)):
+                self._click_fixed(rect, key, "next", (0.927, 0.910), "提交/下一题")
+                if index < clicks - 1:
+                    time.sleep(interval)
             self.listen_state[key] = "done"
-            time.sleep(1.5)
+            time.sleep(0.6)
 
     def _click_fixed(self, rect: Rect, key: str, name: str,
                      fallback: tuple[float, float], label: str) -> None:

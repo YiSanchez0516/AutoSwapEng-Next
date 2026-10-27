@@ -65,7 +65,9 @@ python -m venv .venv
 4. Choose `3` to capture a frame and run OCR diagnostics
 5. Choose `2` to start
 
-The program automatically recognises whether it is in the **study-card / quiz / reinforcement** stage and clicks "进入强化" (Enter reinforcement) on the study summary page. If the listening page has no text buttons, re-run `setup` step 5 and record the "play / record / submit" buttons with the mouse.
+The program automatically recognises whether it is in the **study-card / quiz / reinforcement** stage and clicks "进入强化" (Enter reinforcement) on the study summary page.
+
+Listening dialogues: the flow clicks the **left speaker once**, then clicks the **bottom-right arrow 3 times** to submit and advance. The right waveform only replays your own recording and the center microphone records; neither is clicked. If positions are off, run `setup` step 5 and calibrate only the play and bottom-right arrow positions.
 
 Common commands:
 
@@ -150,8 +152,10 @@ python tools\build_vocab.py --ecdict-only --out data\vocab.json
 | `bbox` | Capture region `[x1, y1, x2, y2]` in physical screen pixels |
 | `keyboard.bbox` | On-screen keyboard region for spelling (calibratable) |
 | `spell_input` | Click position of the spelling input box `[x, y]` |
-| `listen.play` / `listen.record` / `listen.submit` / `listen.next` | Screen coordinates of the four listening buttons (`setup` step 5) |
-| `listen.auto_flow` | `true`: play → record → score → next; `false`: play and wait, default `true` |
+| `listen.play` / `listen.next` | Screen coordinates of the play speaker and bottom-right submit/next arrow (`setup` step 5) |
+| `listen.auto_flow` | `true`: play once then click the arrow repeatedly; `false`: play only, default `true` |
+| `listen.play_wait` | Seconds to wait after playing, default 2.0 |
+| `listen.arrow_clicks` / `listen.arrow_interval` | Arrow click count/interval, default 3 / 0.4 s |
 | `auto_enter_reinforce` | Enter reinforcement automatically after the study summary, default `true` |
 | `pack_memory` | Remember pack words and mistakes between runs, default `true` |
 | `write_canvas` | Handwriting pad region `[x1, y1, x2, y2]` |
@@ -194,10 +198,12 @@ See [`config.example.json`](config.example.json).
 
 **Wrong listening click position**
 
-- The dialogue page has four controls: left speaker (play), center microphone (record), right waveform (score/submit), bottom-right arrow (next)
-- Defaults use screenshot-derived ratios; if the mirror window has a title bar or scaling, run `setup` step 5 and record all four positions
+- Dialogue page: left speaker (play), center microphone (record), right waveform (replay your recording), bottom-right arrow (submit + next)
+- The flow only clicks the left speaker once and the bottom-right arrow three times; it never clicks record or the waveform
+- Defaults use screenshot-derived ratios; if the mirror window has a title bar or scaling, run `setup` step 5 and calibrate play + arrow
 - Calibrated coordinates are only valid while the window stays in place
-- To listen without recording, set `listen.auto_flow` to `false`
+- Tune `listen.arrow_clicks` / `listen.arrow_interval` to change the click count or interval
+- To play without auto-advancing, set `listen.auto_flow` to `false`
 
 **Reviewing mistakes / OCR errors**
 
