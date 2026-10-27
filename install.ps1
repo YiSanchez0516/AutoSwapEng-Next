@@ -1,4 +1,4 @@
-# 一键安装: Python 3.12 + 虚拟环境 + PaddleOCR (Windows, 用户级)
+﻿# One-click installer: Python 3.12 + venv + PaddleOCR (Windows, per-user)
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Venv = Join-Path $Root ".venv"
@@ -22,33 +22,43 @@ function Find-Python312 {
     return $null
 }
 
+Write-Host "=== AutoSwapEng-Next installer ===" -ForegroundColor Cyan
+
 $python = Find-Python312
 if (-not $python) {
-    Write-Host "未找到 Python 3.12, 正在通过 winget 安装..." -ForegroundColor Yellow
+    Write-Host "Python 3.12 not found. Installing via winget..." -ForegroundColor Yellow
     winget install --id Python.Python.3.12 -e --scope user `
         --accept-package-agreements --accept-source-agreements --disable-interactivity
     $python = "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe"
-    if (-not (Test-Path $python)) { throw "Python 3.12 安装失败, 请手动安装后重试" }
+    if (-not (Test-Path $python)) {
+        throw "Python 3.12 installation failed. Install it manually and run again."
+    }
 }
+Write-Host "Python: $python"
 
 if (-not (Test-Path $Venv)) {
-    Write-Host "创建虚拟环境: $Venv" -ForegroundColor Cyan
+    Write-Host "Creating virtual environment: $Venv" -ForegroundColor Cyan
     & $python -m venv $Venv
+    if ($LASTEXITCODE -ne 0) { throw "Failed to create the virtual environment." }
 }
 
 $venvPython = Join-Path $Venv "Scripts\python.exe"
-Write-Host "升级 pip..." -ForegroundColor Cyan
+if (-not (Test-Path $venvPython)) { throw "venv is incomplete: $venvPython" }
+
+Write-Host "Upgrading pip..." -ForegroundColor Cyan
 & $venvPython -m pip install --upgrade pip -i $Mirror
+if ($LASTEXITCODE -ne 0) { throw "Failed to upgrade pip." }
 
-Write-Host "安装 PaddleOCR 依赖 (首次约几百 MB)..." -ForegroundColor Cyan
+Write-Host "Installing PaddleOCR dependencies (several hundred MB on first run)..." -ForegroundColor Cyan
 & $venvPython -m pip install -r (Join-Path $Root "requirements.txt") -i $Mirror
+if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed. Check your network and retry." }
 
 Write-Host ""
-Write-Host "安装完成。" -ForegroundColor Green
-Write-Host "下一步:"
-Write-Host "  1) 打开投屏软件 (Escrcpy / scrcpy / 模拟器), 让翻转外语画面显示出来"
-Write-Host "  2) 双击 run.bat, 选择 1 框选投屏窗口"
-Write-Host "  3) 选择 3 抓屏诊断, 确认 OCR 能读清题目"
-Write-Host "  4) 选择 2 开始自动答题"
+Write-Host "Installation complete." -ForegroundColor Green
+Write-Host "Next steps:"
+Write-Host "  1) Open your phone mirroring app (OPPO Connect / scrcpy / emulator) and show Fanzhuan Waiyu"
+Write-Host "  2) Double-click run.bat, then choose 1 to select the mirror window"
+Write-Host "  3) Choose 3 to capture a frame and verify OCR"
+Write-Host "  4) Choose 2 to start"
 Write-Host ""
-Write-Host "首次 OCR 运行会自动下载中文模型 (约 20MB)."
+Write-Host "The Chinese OCR model (~20 MB) is downloaded automatically on the first OCR run."
