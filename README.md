@@ -140,7 +140,15 @@ python tools\verify_vocab.py --vocab cache\vocab.json
 python tools\build_vocab.py --ecdict-only --out data\vocab.json
 ```
 
-`tools/verify_vocab.py` 会检查词条结构、已知单词（bridge/intense/built/caught/chosen 等）并与 ECDICT 抽样比对，报告写入 `logs/vocab-report.txt`。词表来源请遵循其各自许可证。
+`tools/verify_vocab.py` 会检查词条结构、已知单词（bridge/intense/built/caught/chosen 等）并与 ECDICT 抽样比对，报告写入 `logs/vocab-report.txt`。
+
+把本地学习记录（`cache/study.json`、`cache/learned.json`）中校验通过的释义并入本地词库：
+
+```bat
+python tools\merge_app_cache.py
+```
+
+脚本会过滤 OCR 误读和拼接片段（如 `agree -> 同思`、`顾客主顾`），报告写入 `logs/vocab-merge-report.txt`。词表来源请遵循其各自许可证。
 
 ## 配置项
 
@@ -227,6 +235,7 @@ fzauto/
 tools/
   build_vocab.py     生成本地词库
   verify_vocab.py    校验词库结构与释义
+  merge_app_cache.py 合并本地学习记录中的可靠释义
   sim_cases.json     离线选择题测试用例
 data/
   vocab.json.gz      发行包自带 ECDICT 词库

@@ -142,6 +142,14 @@ python tools\build_vocab.py --ecdict-only --out data\vocab.json
 
 `tools/verify_vocab.py` checks structure, known words (bridge/intense/built/caught/chosen, etc.) and samples ECDICT for consistency; the report goes to `logs/vocab-report.txt`.
 
+Merge validated meanings from local study records (`cache/study.json`, `cache/learned.json`) into the local vocabulary:
+
+```bat
+python tools\merge_app_cache.py
+```
+
+The script filters OCR mistakes and concatenated fragments (e.g. `agree -> 同思`, `顾客主顾`), and writes a report to `logs/vocab-merge-report.txt`.
+
 ## Configuration
 
 `setup` generates `config.json`, which is ignored by Git. Common fields:
@@ -227,6 +235,7 @@ fzauto/
 tools/
   build_vocab.py     local vocabulary builder
   verify_vocab.py    vocabulary structure/consistency checks
+  merge_app_cache.py merge validated meanings from local study records
   sim_cases.json     offline multiple-choice test cases
 data/
   vocab.json.gz      bundled ECDICT vocabulary
