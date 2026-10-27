@@ -1,5 +1,7 @@
 # 翻转外语自动化助手（AutoSwapEng-Next）
 
+[English](README.en.md) | 中文
+
 基于 **电脑投屏 + PaddleOCR + PyAutoGUI** 的「翻转外语」练习辅助工具，支持单词选择、拼写、手写、听力等题型。
 
 > 本项目的思路与初版来自 [**ZRedTea/AutoSwapEng**](https://github.com/ZRedTea/AutoSwapEng)（MIT License）。
