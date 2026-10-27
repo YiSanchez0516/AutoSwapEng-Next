@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import time
 from collections import deque
@@ -13,6 +14,7 @@ from .actions import Controller
 from .config import CAPTURE_DIR, LOG_DIR, Config
 from .ocr import OcrEngine, draw_debug
 from .screen import Capture, Rect, activate_window
+from .session import PackSession
 from .solver import Solver
 from .ui import Keyboard, Line, Scene, SceneState
 from .words import Lexicon
@@ -32,12 +34,17 @@ class Runner:
         self.solver = Solver(self.lex)
         self.controller = Controller(cfg)
         self.recent: deque[str] = deque(maxlen=60)
+        self.session = PackSession.load() if cfg.get("pack_memory", True) else PackSession()
+        self.recent.extend(self.session.words[-60:])
         self.attempts: dict[str, int] = {}
         self.last_word: str | None = None
         self.stale = 0
         self.counts = {"choice": 0, "spell": 0, "write": 0, "listen": 0, "study": 0}
         self._action_time: dict[str, float] = {}
+        self.listen_state: dict[str, str] = {}
+        self.stop_requested = False
         self.log_file = LOG_DIR / f"run-{datetime.now():%Y%m%d-%H%M%S}.log"
+        self.answer_log = LOG_DIR / f"answers-{datetime.now():%Y%m%d}.jsonl"
 
     # ---------- 日志 ----------
     def log(self, message: str) -> None:
@@ -98,6 +105,7 @@ class Runner:
             scene = Scene(lines, rect.width, rect.height, self.cfg)
             state = scene.detect()
             state = self._apply_mode(scene, state)
+            stage = self.session.observe(scene, state)
 
             if self.cfg.get("log_ocr"):
                 self._log_ocr(lines)
@@ -109,15 +117,13 @@ class Runner:
                 self.stale = 0
                 self.last_word = key
 
-            progress = f"{state.current}/{state.total}" if state.total else "-"
-            self.log(f"[{step}] {state.kind} 进度 {progress} "
-                     f"词={state.word or '-'} 提示={'/'.join(state.prompt[:3]) or '-'}")
+            progress = (f"{self.session.current}/{self.session.total}"
+                        if self.session.total else "-")
+            self.log(f"[{step}] {state.kind} 阶段={stage} 卡包={self.session.pack or '-'} "
+                     f"进度={progress} 词={state.word or '-'} "
+                     f"提示={'/'.join(state.prompt[:3]) or '-'}")
             if self.debug:
                 draw_debug(image, lines, CAPTURE_DIR / f"debug-{step:03d}.png")
-
-            if state.kind == "done":
-                self.log("本卡包已完成, 结束")
-                break
 
             if self.dry_run:
                 self._dry_run(state)
@@ -126,6 +132,17 @@ class Runner:
                     break
                 time.sleep(0.6)
                 continue
+
+            if state.kind == "summary":
+                self.handle_summary(rect, scene, state)
+                if self.stop_requested:
+                    break
+                continue
+
+            if state.kind == "done":
+                self.session.finish()
+                self.log("本卡包已完成, 结束")
+                break
 
             try:
                 if state.kind == "popup":
@@ -149,6 +166,8 @@ class Runner:
                 self.log(f"  处理出错: {exc}")
                 time.sleep(0.8)
 
+            if self.stop_requested:
+                break
             if self.stale >= 8:
                 self.log("画面长时间没有变化, 已停止 (可检查是否卡在弹窗)")
                 break
@@ -176,6 +195,22 @@ class Runner:
             self.log(f"    OCR {index:02d} ({line.x1},{line.y1})-({line.x2},{line.y2}) "
                      f"{line.score:.2f} {line.text}")
 
+    def _log_answer(self, payload: dict) -> None:
+        """把每题的选择/结果写入 answers-*.jsonl, 便于复盘错题."""
+        data = {
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "pack": self.session.pack,
+            "stage": self.session.stage,
+            "progress": f"{self.session.current}/{self.session.total}",
+        }
+        data.update(payload)
+        try:
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            with self.answer_log.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(data, ensure_ascii=False) + "\n")
+        except OSError:
+            pass
+
     def _dry_run(self, state: SceneState) -> None:
         if state.kind == "choice" and state.word:
             ranked = self.solver.choose_choices(state.word, state.options)
@@ -187,10 +222,49 @@ class Runner:
             self.log("   [预览] 学习卡片")
             if state.word:
                 self.recent.append(state.word.lower())
+        elif state.kind == "summary":
+            self.log("   [预览] 学习结算页, 将自动进入强化")
 
     # ---------- 题型处理 ----------
+    def handle_summary(self, rect: Rect, scene: Scene, state: SceneState) -> None:
+        """学习结算页: 自动进入强化/巩固阶段."""
+        key = f"summary|{self.session.pack}"
+        button = scene.button("进入强化") or scene.button("开始强化")
+        if button is None or not self.cfg.get("auto_enter_reinforce", True):
+            self.log("   学习阶段完成, 未自动进入强化")
+            self.stop_requested = True
+            return
+        if time.time() - self._action_time.get(key, 0) < 2.0:
+            time.sleep(0.4)
+            return
+        self.log(f"   学习完成, 进入强化: {button.text}")
+        self.controller.click(*self.abs_line(rect, button), settle=1.2)
+        self._action_time[key] = time.time()
+        self.session.mark_reinforce()
+
     def handle_popup(self, rect: Rect, scene: Scene, state: SceneState) -> None:
-        button = scene.button("确定") or scene.button("继续") or scene.button("我知道了")
+        text = scene.compact
+        if "待强化单词" in text:
+            self.session.mark_reinforce()
+            self.log("   进入强化/巩固阶段")
+            for keyword in ("开始强化", "进入强化", "开始", "确定"):
+                button = scene.button(keyword)
+                if button:
+                    self.controller.click(*self.abs_line(rect, button), settle=1.0)
+                    return
+            self.controller.click_ratio(rect, 0.5, 0.88)
+            time.sleep(1.0)
+            return
+        if "遇到错词不要怕" in text:
+            button = scene.button("确定") or scene.button("继续") or scene.button("知道了")
+            if button:
+                self.controller.click(*self.abs_line(rect, button), settle=0.6)
+            else:
+                time.sleep(0.8)
+            return
+        button = (scene.button("开始强化") or scene.button("进入强化")
+                  or scene.button("确定") or scene.button("继续")
+                  or scene.button("我知道了"))
         if button:
             self.controller.click(*self.abs_line(rect, button), settle=0.6)
         else:
@@ -200,7 +274,17 @@ class Runner:
     def handle_choice(self, rect: Rect, scene: Scene, state: SceneState, image: Image.Image) -> None:
         options = state.options
         colors = {opt.letter: self._row_color(image, opt.line) for opt in options}
-        word = state.word or self._recover_word(image)
+        raw_word = state.word or self._recover_word(image)
+        word, corrected = (self.session.correct_word(raw_word) if raw_word else ("", False))
+        if corrected:
+            self.log(f"   按本卡包单词纠正: {raw_word} -> {word}")
+        elif word and not self.lex.has_word(word):
+            # 词库/词包都查不到, 再放大识别一次题目区域
+            better = self._recover_word(image)
+            if better and self.lex.has_word(better):
+                self.log(f"   放大补识别: {word} -> {better}")
+                raw_word, word = better, better
+                word, corrected = self.session.correct_word(word)
         if not word:
             self.log("   没读到题目单词, 等待重试")
             time.sleep(0.5)
@@ -208,19 +292,30 @@ class Runner:
         key = f"choice|{state.current}|{word}"
         attempted = self.attempts.get(key, 0)
         if any(color == "green" for color in colors.values()):
+            green = next(letter for letter, color in colors.items() if color == "green")
+            chosen = next((opt for opt in options if opt.letter == green), None)
             if attempted > 0:
                 self.counts["choice"] += 1
-                green = next(letter for letter, color in colors.items() if color == "green")
-                chosen = next((opt for opt in options if opt.letter == green), None)
-                if chosen and word and self.solver.meaning_plausible(word, chosen.text):
+                if chosen and self.solver.meaning_plausible(word, chosen.text):
                     self.lex.remember_learned(word, chosen.text)
+                self._log_answer({
+                    "event": "choice_result", "word": word, "result": "green",
+                    "correct": green, "reply": chosen.text if chosen else "",
+                })
+            self.session.remove_wrong(word)
             self.controller.swipe(rect, 0.5, 0.74, 0.5, 0.40)
             return
         red = [letter for letter, color in colors.items() if color == "red"]
+        if red:
+            self.session.add_wrong(word)
         ranked = self.solver.choose_choices(word, options)
         ranked = [item for item in ranked if item[0] not in red]
         if attempted >= len(ranked):
             self.log("  所有选项都试过了, 直接下一题")
+            self._log_answer({
+                "event": "choice_result", "word": word, "result": "exhausted",
+                "options": [{"letter": o.letter, "text": o.text} for o in options],
+            })
             self.controller.swipe(rect, 0.5, 0.74, 0.5, 0.40)
             return
         if time.time() - self._action_time.get(key, 0) < 1.2:
@@ -232,6 +327,10 @@ class Runner:
         if target is None:
             return
         self.log(f"   选 {letter}: {note}  ({target.text})")
+        self._log_answer({
+            "event": "choice_click", "word": word, "chosen": letter, "note": note,
+            "options": [{"letter": o.letter, "text": o.text} for o in options],
+        })
         self.controller.click(*self.abs_line(rect, target.line),
                               settle=self.cfg.get("delays.after_click", 0.7))
         self.attempts[key] = attempted + 1
@@ -244,6 +343,7 @@ class Runner:
             self.controller.swipe(rect, 0.5, 0.74, 0.5, 0.40)
             return
         self.recent.append(word.lower())
+        self.session.add_word(word)
         self.counts["study"] += 1
         self.log(f"   学习卡片: {word}")
         # 点开卡片看释义, 顺便记进词库供拼写题使用
@@ -334,46 +434,111 @@ class Runner:
         time.sleep(1.0)
 
     def handle_listen(self, rect: Rect, scene: Scene, state: SceneState) -> None:
-        listen_word = state.word
-        if listen_word:
-            self.recent.append(listen_word.lower())
-        if scene.has("当前卡包已完成"):
-            button = scene.button("当前卡包已完成") or scene.submit_line()
-            if button:
-                self.controller.click(*self.abs_line(rect, button), settle=0.8)
+        raw_word = state.word or ""
+        word, corrected = (self.session.correct_word(raw_word) if raw_word else ("", False))
+        if corrected:
+            self.log(f"   按本卡包单词纠正: {raw_word} -> {word}")
+        if word:
+            self.recent.append(word.lower())
+        key = f"listen|{self.session.current}|{word}"
+        if time.time() - self._action_time.get(key, 0) < 2.0:
+            time.sleep(0.4)
             return
+
+        if scene.has("当前卡包已完成"):
+            point = self._listen_point("submit", rect)
+            if point:
+                self.controller.click(*point, settle=0.8)
+            else:
+                button = scene.submit_line()
+                if button:
+                    self.controller.click(*self.abs_line(rect, button), settle=0.8)
+                else:
+                    self.controller.click_ratio(rect, 0.3504, 0.9517)
+            self.session.finish()
+            self._action_time[key] = time.time()
+            return
+
         if scene.has("内容会慢慢呈现") or scene.has("已播放"):
-            # 原版比例: 播放按钮在左下方
-            self.controller.click_ratio(rect, 0.2811, 0.8427)
+            if self.listen_state.get(key) == "played":
+                time.sleep(1.0)
+                return
+            self._click_listen(rect, scene, key, "play", ("播放", "播放一遍"),
+                               (0.2811, 0.8427))
+            self.listen_state[key] = "played"
             self.log("   已点击播放")
             time.sleep(1.2)
             return
+
         if scene.has("点击按钮") or scene.has("不能暂停"):
-            # 录音按钮在右下角
-            self.controller.click_ratio(rect, 0.9376, 0.9826)
+            if self.listen_state.get(key) in ("recorded", "submitted"):
+                time.sleep(1.0)
+                return
+            self._click_listen(rect, scene, key, "record", ("录音", "开始录音"),
+                               (0.9376, 0.9826))
+            self.listen_state[key] = "recorded"
             self.log("   已点击录音")
             time.sleep(2.5)
             return
+
         play = scene.button("播放")
         record = scene.button("录音") or scene.button("开始录音")
         stop = scene.button("停止") or scene.button("结束录音")
         confirm = scene.button("提交") or scene.button("确定") or scene.button("完成")
-        if play:
-            self.controller.click(*self.abs_line(rect, play), settle=2.4)
+        if play and self.listen_state.get(key) != "played":
+            self._click_listen(rect, scene, key, "play", ("播放",), (0.2811, 0.8427))
+            self.listen_state[key] = "played"
             self.log("   已点击播放")
             return
-        if record:
-            self.controller.click(*self.abs_line(rect, record), settle=4.0)
+        if record and self.listen_state.get(key) not in ("recorded", "submitted"):
+            self._click_listen(rect, scene, key, "record", ("录音",), (0.9376, 0.9826))
+            self.listen_state[key] = "recorded"
             self.log("   已点击录音")
+            time.sleep(2.0)
             return
         if stop:
             self.controller.click(*self.abs_line(rect, stop), settle=0.8)
+            self._action_time[key] = time.time()
             return
         if confirm:
-            self.controller.click(*self.abs_line(rect, confirm), settle=0.8)
+            self._click_listen(rect, scene, key, "submit", ("提交",), (0.3504, 0.9517))
+            self.listen_state[key] = "submitted"
             self.counts["listen"] += 1
             return
         self.controller.swipe(rect, 0.5, 0.74, 0.5, 0.40)
+
+    def _listen_point(self, name: str, rect: Rect) -> tuple[int, int] | None:
+        points = self.cfg.get("listen") or {}
+        value = points.get(name) if isinstance(points, dict) else None
+        if isinstance(value, (list, tuple)) and len(value) == 2:
+            point = int(value[0]), int(value[1])
+            if rect.contains(*point):
+                return point
+            self.log(f"   听力按钮 {name} 的校准位置不在当前窗口内, 改用自动识别")
+        return None
+
+    def _click_listen(self, rect: Rect, scene: Scene, key: str, name: str,
+                      keywords: tuple[str, ...], fallback: tuple[float, float]) -> None:
+        point = self._listen_point(name, rect)
+        if point:
+            self.log(f"   点击{name}(校准): {point}")
+            self.controller.click(*point, settle=0.6)
+        else:
+            button = None
+            for keyword in keywords:
+                button = scene.button(keyword)
+                if button:
+                    break
+            if button:
+                target = self.abs_line(rect, button)
+                self.log(f"   点击{name}(文字): {target}")
+                self.controller.click(*target, settle=0.6)
+            else:
+                target = rect.point(*fallback)
+                self.log(f"   点击{name}(比例): {target}  "
+                         f"若位置不对请运行 setup 第 5 步校准")
+                self.controller.click(*target, settle=0.6)
+        self._action_time[key] = time.time()
 
     def handle_unknown(self, rect: Rect, scene: Scene, state: SceneState) -> None:
         if len(scene.lines) < 3:
@@ -434,18 +599,25 @@ class Runner:
         return best
 
     def _candidates(self, state: SceneState) -> list[str]:
-        if state.word and re.fullmatch(r"[A-Za-z][A-Za-z'’\- ]{1,30}", state.word):
+        word = state.word
+        if word and re.fullmatch(r"[A-Za-z][A-Za-z'’\- ]{1,30}", word):
+            word, corrected = self.session.correct_word(word)
+            if corrected:
+                self.log(f"   按本卡包单词纠正: {state.word} -> {word}")
             if state.kind == "spell" and not state.prompt:
-                return [state.word.lower()]
+                return [word]
         words = self.solver.spell_candidates(state.prompt, list(self.recent), limit=4)
-        if not words and state.word and state.kind in ("spell", "write"):
-            words = [state.word.lower()]
+        if not words and word and state.kind in ("spell", "write"):
+            words = [word]
         return words
 
     def _spell_input_point(self, rect: Rect, keyboard: Keyboard | None) -> tuple[int, int]:
         configured = self.cfg.get("spell_input")
         if configured and len(configured) == 2:
-            return int(configured[0]), int(configured[1])
+            point = int(configured[0]), int(configured[1])
+            if rect.contains(*point):
+                return point
+            self.log("   拼写输入框的校准位置不在当前窗口内, 改用自动推断")
         if keyboard and keyboard.bbox:
             x = rect.x1 + keyboard.bbox.x1 + keyboard.bbox.width // 2
             y = rect.y1 + keyboard.bbox.y1 - int(rect.height * 0.07)

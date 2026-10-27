@@ -15,8 +15,8 @@ OPTION_RE = re.compile(r"^([A-Ea-e])\s*[.、．,，:：)）]?\s*(.+)$")
 PHONETIC_RE = re.compile(r"^[\[/／].{1,40}[\]/／]$")
 LATIN_WORD_RE = re.compile(r"^[A-Za-z][A-Za-z'’\- ]{1,30}$")
 
-DONE_WORDS = ("恭喜你完成卡包学习", "恭喜完成", "当前卡包已完成", "任务已完成",
-              "已完成今日", "学习完成", "今日任务已完成", "全部完成", "恭喜你完成")
+DONE_WORDS = ("当前卡包已完成", "任务已完成", "已完成今日", "学习完成",
+              "今日任务已完成", "全部完成")
 POPUP_WORDS = ("温馨提示", "我知道了", "知道了")
 SPELL_WORDS = ("请输入", "输入答案", "输入单词", "点击输入", "拼写", "写一写",
                "根据释义", "写出单词", "请输入单词")
@@ -223,7 +223,7 @@ class Scene:
     # ---------- 拼写/手写提示 ----------
     def prompt_segments(self, keyboard_top: int | None = None) -> list[str]:
         """取页面中部的中文提示, 去掉操作说明, 返回释义片段."""
-        limit = keyboard_top if keyboard_top else int(self.height * 0.62)
+        limit = keyboard_top if keyboard_top else int(self.height * 0.72)
         segments: list[str] = []
         for line in self.lines:
             if line.cy < self.height * 0.10 or line.cy > limit:
@@ -347,8 +347,19 @@ class Scene:
     def detect(self) -> SceneState:
         current, total = self.progress()
 
-        if any(word in self.compact for word in DONE_WORDS):
+        if any(word in self.compact for word in ("恭喜你完成卡包学习", "恭喜完成", "本次学习")):
+            # 学习结算页: 有“进入强化”时交给上层自动进入巩固阶段
+            if self.button("进入强化") or self.button("开始强化"):
+                return SceneState("summary", current=current, total=total)
             return SceneState("done", current=current, total=total)
+
+        if any(word in self.compact for word in ("当前卡包已完成", "任务已完成",
+                                                 "已完成今日", "今日任务已完成",
+                                                 "全部完成", "学习完成")):
+            return SceneState("done", current=current, total=total)
+
+        if "待强化单词" in self.compact or "遇到错词不要怕" in self.compact:
+            return SceneState("popup", current=current, total=total)
 
         popup = self.button("确定") or self.button("继续") or self.button("我知道了")
         pack_lines = [line for line in self.lines if "卡包" in line.text]

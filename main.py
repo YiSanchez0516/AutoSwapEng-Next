@@ -210,8 +210,24 @@ def _window_priority(item: tuple[str, Rect]) -> tuple[int, int]:
     return rank, -(rect.width * rect.height)
 
 
+def _record_point(description: str) -> list[int] | None:
+    """倒计时后记录鼠标位置, 用于校准输入框/听力按钮."""
+    try:
+        import pyautogui
+        print(f"  请把鼠标移到{description}上, 3 秒后记录...")
+        for count in (3, 2, 1):
+            print(f"  {count}")
+            time.sleep(1)
+        x, y = pyautogui.position()
+        print(f"  已记录: ({x}, {y})")
+        return [int(x), int(y)]
+    except Exception as exc:
+        print(f"  记录失败: {exc}")
+        return None
+
+
 def setup(cfg: Config) -> None:
-    print("\n[1/4] 选择 OPPO 互联 / 投屏窗口")
+    print("\n[1/5] 选择 OPPO 互联 / 投屏窗口")
     windows = list_windows()
     scored = sorted(windows, key=_window_priority)
     for index, (title, rect) in enumerate(scored[:15], 1):
@@ -264,7 +280,7 @@ def setup(cfg: Config) -> None:
         print(f"截图失败: {exc}")
         return
 
-    print("\n[2/4] 拼写题屏幕键盘 (可跳过)")
+    print("\n[2/5] 拼写题屏幕键盘 (可跳过)")
     print("  如果拼写页有独立键盘, 拖拽框选键盘区域; 直接回车跳过")
     if input("框选键盘? [y/N]: ").strip().lower() == "y":
         kb = select_region_drag("拖动框选拼写页的字母键盘区域, 按 Esc 取消")
@@ -273,7 +289,7 @@ def setup(cfg: Config) -> None:
             cfg.save()
             print(f"键盘区域: {kb.as_list()}")
 
-    print("\n[3/4] 手写板区域 (可跳过)")
+    print("\n[3/5] 手写板区域 (可跳过)")
     print("  手写题出现时, 拖拽框选真正可以写字的空白区域")
     if input("框选手写区? [y/N]: ").strip().lower() == "y":
         canvas = select_region_drag("拖动框选手写板区域, 按 Esc 取消")
@@ -282,20 +298,30 @@ def setup(cfg: Config) -> None:
             cfg.save()
             print(f"手写区域: {canvas.as_list()}")
 
-    print("\n[4/4] 拼写输入框位置 (可跳过)")
+    print("\n[4/5] 拼写输入框位置 (可跳过)")
     print("  打开一道拼写题, 把鼠标放到输入框上, 3 秒后自动记录")
     if input("记录输入框位置? [y/N]: ").strip().lower() == "y":
-        try:
-            import pyautogui
-            for count in (3, 2, 1):
-                print(f"  {count} 秒后记录鼠标位置...")
-                time.sleep(1)
-            x, y = pyautogui.position()
-            cfg.set("spell_input", [int(x), int(y)])
+        point = _record_point("拼写输入框")
+        if point:
+            cfg.set("spell_input", point)
             cfg.save()
-            print(f"输入框位置: ({x}, {y})")
-        except Exception as exc:
-            print(f"记录失败: {exc}")
+
+    print("\n[5/5] 听力页按钮 (可跳过)")
+    print("  打开一道听力题, 依次记录“播放 / 录音 / 提交”三个按钮")
+    print("  如果听力页没有文字按钮, 这一步能避免点错位置")
+    if input("校准听力按钮? [y/N]: ").strip().lower() == "y":
+        play = _record_point("播放按钮")
+        record = _record_point("录音/开始录音按钮")
+        submit = _record_point("提交/完成按钮")
+        listen = {
+            "play": play,
+            "record": record,
+            "submit": submit,
+        }
+        if any(listen.values()):
+            cfg.set("listen", listen)
+            cfg.save()
+            print(f"听力按钮: {listen}")
 
     print(f"\n配置已保存: {CONFIG_FILE}")
     print("下一步: python main.py shot 检查 OCR 是否能读清题目, 再运行 python main.py run")

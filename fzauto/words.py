@@ -119,6 +119,15 @@ class Lexicon:
     def __len__(self) -> int:
         return len(self.vocab)
 
+    def has_word(self, word: str) -> bool:
+        """快速判断本地是否有该词 (不触发联网查询)."""
+        key = word.lower().strip()
+        if not key:
+            return False
+        if key in self.vocab or key in self.study or key in self.learned:
+            return True
+        return self._ecdict(key) is not None
+
     # ---------- 正查 ----------
     def entry(self, word: str) -> tuple[list[str], set[str]]:
         key = word.lower().strip()

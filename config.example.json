@@ -13,6 +13,13 @@
     "template": true
   },
   "spell_input": null,
+  "listen": {
+    "play": null,
+    "record": null,
+    "submit": null
+  },
+  "auto_enter_reinforce": true,
+  "pack_memory": true,
   "write_canvas": null,
   "delays": {
     "click": 0.03,

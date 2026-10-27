@@ -11,6 +11,7 @@ An automation helper for the **Fanzhuan Waiyu** ("Flipped Foreign Language") voc
 ## Features
 
 - **Automatic exercise detection**: multiple choice, meaning-to-word spelling, handwriting pad, listening, study cards
+- **Automatic pack-stage detection**: study cards / quiz / post-mistake reinforcement; enters reinforcement automatically after the study summary
 - **Multiple choice**: scores options using a local vocabulary, ECDICT and online dictionaries; detects red/green answer feedback and retries with the next option when wrong
 - **Spelling**: reverse lookup from Chinese meaning to English candidates, taps the on-screen keyboard, retries alternative candidates on failure
 - **Handwriting**: built-in single-stroke alphabet; draws the word on the writing pad via PyAutoGUI. Supports whole-word, letter-by-letter and one-letter-per-box modes
@@ -63,6 +64,8 @@ python -m venv .venv
    - Or press `d`: drag-select **only the phone screen** (exclude toolbars and black borders)
 4. Choose `3` to capture a frame and run OCR diagnostics
 5. Choose `2` to start
+
+The program automatically recognises whether it is in the **study-card / quiz / reinforcement** stage and clicks "进入强化" (Enter reinforcement) on the study summary page. If the listening page has no text buttons, re-run `setup` step 5 and record the "play / record / submit" buttons with the mouse.
 
 Common commands:
 
@@ -136,6 +139,9 @@ This generates `cache/vocab.json`. Follow the license of each word-list source.
 | `bbox` | Capture region `[x1, y1, x2, y2]` in physical screen pixels |
 | `keyboard.bbox` | On-screen keyboard region for spelling (calibratable) |
 | `spell_input` | Click position of the spelling input box `[x, y]` |
+| `listen.play` / `listen.record` / `listen.submit` | Screen coordinates of the three listening buttons (`setup` step 5) |
+| `auto_enter_reinforce` | Enter reinforcement automatically after the study summary, default `true` |
+| `pack_memory` | Remember pack words and mistakes between runs, default `true` |
 | `write_canvas` | Handwriting pad region `[x1, y1, x2, y2]` |
 | `handwriting.mode` | `word` for continuous writing, `letter` for letter-by-letter |
 | `handwriting.letter_boxes` | If greater than 1, split the pad into N boxes, one letter per box |
@@ -174,6 +180,17 @@ See [`config.example.json`](config.example.json).
 - Re-run step 4 of `setup` and record the input box position with the mouse
 - Or set `type_method` to `"type"` to type directly
 
+**Wrong listening click position**
+
+- Re-run `setup` step 5 and calibrate the "play / record / submit" buttons
+- Calibrated coordinates are only valid while the window stays in place
+- The program also tries to find text buttons named "播放 / 录音 / 提交" first
+
+**Reviewing mistakes / OCR errors**
+
+- Every run writes a record to `logs/answers-*.jsonl`
+- Each line contains pack, stage, progress, OCR word, options, actual click and feedback; attach it to an issue if needed
+
 ## Project structure
 
 ```
@@ -186,6 +203,7 @@ fzauto/
   solver.py          multiple-choice scoring and spelling candidates
   strokes.py         single-stroke alphabet
   actions.py         clicks, swipes, keyboard input, handwriting
+  session.py         pack-stage detection, studied words and mistakes
   runner.py          main loop
 tools/
   build_vocab.py     local vocabulary builder
