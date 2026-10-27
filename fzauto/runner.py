@@ -42,6 +42,7 @@ class Runner:
         self.counts = {"choice": 0, "spell": 0, "write": 0, "listen": 0, "study": 0}
         self._action_time: dict[str, float] = {}
         self.listen_state: dict[str, str] = {}
+        self._arrow_rounds: dict[str, int] = {}
         self.stop_requested = False
         self.log_file = LOG_DIR / f"run-{datetime.now():%Y%m%d-%H%M%S}.log"
         self.answer_log = LOG_DIR / f"answers-{datetime.now():%Y%m%d}.jsonl"
@@ -540,11 +541,22 @@ class Runner:
             if changed:
                 # 已经进入下一题: 清掉旧状态, 下一轮会对新界面重新播放
                 self.listen_state.pop(key, None)
+                self._arrow_rounds.pop(key, None)
                 self._action_time[key] = time.time()
                 self.log("   听力: 检测到下一界面, 已停止连点")
-            else:
+                return
+            rounds = self._arrow_rounds.get(key, 0) + 1
+            limit = max(1, int(self.cfg.get("listen.arrow_rounds", 8) or 8))
+            if rounds >= limit:
                 self.listen_state[key] = "done"
-                self.log("   听力: 连点结束, 等待界面变化")
+                self._arrow_rounds.pop(key, None)
+                self.log(f"   听力: 连点 {rounds} 轮仍未换题, 交给主循环处理")
+            else:
+                # 进度没变: 不放弃, 继续连点同一位置
+                self._arrow_rounds[key] = rounds
+                self.stale = 0
+                self.log(f"   听力: 进度未变化(第 {rounds} 轮), 继续连点右下箭头")
+                time.sleep(0.5)
 
     def _screen_signature(self, rect: Rect) -> bytes | None:
         try:
@@ -569,7 +581,7 @@ class Runner:
         interval = float(self.cfg.get("listen.arrow_interval", 0.2) or 0.2)
         stop_on_change = bool(self.cfg.get("listen.stop_on_change", True))
         point = self._listen_point("next", rect) or rect.point(0.927, 0.910)
-        self.log(f"   听力: 连点右下箭头, 最多 {clicks} 次")
+        self.log(f"   听力: 连点右下箭头, 本轮 {clicks} 次 {point}")
         baseline = self._screen_signature(rect)
         for index in range(clicks):
             self.controller.click(*point, settle=0)

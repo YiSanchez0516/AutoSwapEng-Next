@@ -38,10 +38,13 @@ DEFAULTS: dict[str, Any] = {
         "next": None,
         # true: 播放一次 -> 连续点击右下角箭头, 直到界面切换
         "auto_flow": True,
-        # 播放后等待秒数, 以及右下角箭头最多连点次数/间隔
+        # 播放后等待秒数
         "play_wait": 2.0,
+        # 每轮连续点击次数/间隔; 一轮点完进度没变会再点下一轮
         "arrow_clicks": 50,
         "arrow_interval": 0.2,
+        # 最多连点几轮 (安全上限, 防止卡死时无限点击)
+        "arrow_rounds": 8,
         # 检测到下一题界面后立即停止连点
         "stop_on_change": True,
     },
