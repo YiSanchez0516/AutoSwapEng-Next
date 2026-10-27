@@ -1,0 +1,9 @@
+# PaddleOCR 2.x + CPU 版 PaddlePaddle
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+numpy<2
+setuptools
+pyautogui==0.9.54
+mss>=9.0
+Pillow>=10.0
+PyGetWindow==0.0.9

@@ -1,0 +1,22 @@
+[
+  {"word": "disturb", "options": ["vi.竞争；比赛；对抗", "n.梦想 v.做梦", "n.酒", "v.打扰；干扰；妨碍"], "answer": "D"},
+  {"word": "absent", "options": ["adj.缺席；不在 v.缺席", "pron.一个人也没有", "prep.在...下，低于", "n.毛衣，厚运动衫"], "answer": "A"},
+  {"word": "rim", "options": ["n.（圆形物体的）边沿", "pron.他自己", "n.东方", "adj.科学的，系统的"], "answer": "A"},
+  {"word": "air", "options": ["vt.执行；完成；演奏", "n.空气，空中 v.晾；晾干", "adv.（用于否定句）还（没）", "adj.厚的；浓的"], "answer": "B"},
+  {"word": "glove", "options": ["n.卷笔刀", "n.&v.睡觉", "n.（分手指的）手套", "n.分数；记号"], "answer": "C"},
+  {"word": "pioneer", "options": ["n.先锋；拓荒者", "n.俄罗斯", "n.粥；稀饭", "n.招贴画；海报"], "answer": "A"},
+  {"word": "minus", "options": ["n.火箭", "prep.减，减去", "adj.现代的", "n.纪念碑"], "answer": "B"},
+  {"word": "ghost", "options": ["vt.领导；致使；引导", "n.鬼；鬼魂；幽灵", "n.目标；目的", "n.地面，土地"], "answer": "B"},
+  {"word": "glad", "options": ["adj.行政的", "n.玻璃", "n.等级", "adj.高兴的；乐意的"], "answer": "D"},
+  {"word": "hide", "options": ["v.拾取；挑选；采摘", "v.离去，出发", "v.藏，隐蔽", "n.日历；挂历"], "answer": "C"},
+  {"word": "summer", "options": ["prep.在", "n.游泳", "n.夏天，夏季", "adj.一些"], "answer": "C"},
+  {"word": "on", "options": ["adj.极好的，优秀的", "adv.那里", "n.图标；图符", "prep.在...上"], "answer": "D"},
+  {"word": "picture", "options": ["n.图画；照片", "n.课文", "n.铅笔", "n.橡皮"], "answer": "A"},
+  {"word": "vocabulary", "options": ["n.语法", "n.词汇；词汇量", "n.发音", "n.句子"], "answer": "B"},
+  {"word": "temperature", "options": ["n.温度", "n.时间", "n.天气", "n.季节"], "answer": "A"},
+  {"word": "modem", "options": ["n.模型", "n.调制解调器", "n.方式", "n.记忆"], "answer": "B"},
+  {"word": "pepper", "options": ["n.辣椒", "n.胡椒", "n.纸", "n.铅笔"], "answer": "B"},
+  {"word": "queue", "options": ["n.钥匙", "n.问题", "n.队，行列", "n.女王"], "answer": "C"},
+  {"word": "porridge", "options": ["n.猪肉", "n.粥；稀饭", "n.橙子", "n.土豆"], "answer": "B"},
+  {"word": "racket", "options": ["n.火箭", "n.球拍", "n.兔子", "n.彩虹"], "answer": "B"}
+]

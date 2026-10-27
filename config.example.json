@@ -1,0 +1,39 @@
+{
+  "window_title": "",
+  "bbox": null,
+  "ocr": {
+    "lang": "ch",
+    "min_score": 0.45,
+    "use_gpu": false,
+    "upscale": 1.0,
+    "det_limit_side_len": 1600
+  },
+  "keyboard": {
+    "bbox": null,
+    "template": true
+  },
+  "spell_input": null,
+  "write_canvas": null,
+  "delays": {
+    "click": 0.03,
+    "after_click": 0.7,
+    "after_swipe": 0.9,
+    "between_steps": 0.25,
+    "wait_anim": 0.35
+  },
+  "type_method": "tap",
+  "handwriting": {
+    "speed": 0.004,
+    "letter_gap": 0.12,
+    "line_gap": 0.06,
+    "mode": "word",
+    "letter_boxes": 0,
+    "tries": 1
+  },
+  "solver": {
+    "ecdict": "",
+    "online": true
+  },
+  "max_steps": 300,
+  "log_ocr": false
+}
