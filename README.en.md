@@ -8,6 +8,8 @@ An automation helper for the **Fanzhuan Waiyu** ("Flipped Foreign Language") voc
 > This repository is a **complete rewrite**: window capture, OCR parsing, answer decision, handwriting strokes and error handling were rebuilt from scratch, with added OPPO Connect (OPPO 互联) screen-mirroring support.
 > The original project is copyright **ZRedTea**. This project is not affiliated with the original author.
 
+> **Supported mirroring**: only **OPPO Connect ("手机投屏")** has been adapted and tested. Other brands and mirroring tools (Huawei Multi-Screen, Xiaomi Mi Share, vivo, scrcpy, etc.) are untested — please **select the mirroring window manually** in `setup` (crop just the phone screen, without toolbars) and recalibrate the keyboard, handwriting area and listening buttons if needed.
+
 ## Features
 
 - **Automatic exercise detection**: multiple choice, meaning-to-word spelling, handwriting pad, listening, study cards
@@ -35,7 +37,7 @@ An automation helper for the **Fanzhuan Waiyu** ("Flipped Foreign Language") voc
 ## Requirements
 
 - Windows 10 / 11
-- A phone-mirroring app on the PC (recommended: **OPPO Connect → Phone Screencast**, or scrcpy / Escrcpy)
+- A phone-mirroring app on the PC (OPPO Connect "Phone Screencast" is the only tested one; for other brands, select the mirror window manually in `setup`)
 - The Fanzhuan Waiyu mini-program must be visible and usable in the mirror window
 - The first installation downloads Python 3.12, PaddlePaddle, PaddleOCR and Chinese OCR models (about 500–800 MB)
 
@@ -81,7 +83,9 @@ run.bat doctor                 :: generate a diagnostic report
 
 Move the mouse to the top-left corner of the screen to trigger the emergency stop.
 
-## OPPO Connect notes
+## Mirroring notes (OPPO Connect only, for now)
+
+> Only **OPPO Connect → Phone Screencast** has been adapted and tested. Huawei Multi-Screen, Xiaomi Mi Share, vivo, scrcpy and other mirroring tools are untested — please select the mirroring window manually in `setup` before use.
 
 - Auto-detects **portrait** windows whose titles contain `OPPO`, `O+ Connect`, `互联`, `跨屏`, `投屏`, `手机投屏`, `OnePlus`, `一加`, `realme`, etc.
 - The landscape control panel of OPPO Connect is never selected
@@ -265,3 +269,9 @@ Licensed under the [MIT License](LICENSE).
 - [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) — text recognition
 - [ECDICT](https://github.com/skywind3000/ECDICT) — offline English-Chinese dictionary
 - [PyAutoGUI](https://github.com/asweigart/pyautogui), [mss](https://github.com/BoboTiG/python-mss), [PyGetWindow](https://github.com/asweigart/pygetwindow)
+
+## Donate
+
+如果对你有帮助，可以给我投喂哦 (If this project helps you, feel free to buy me a coffee)
+
+<img src="docs/donate.jpg" alt="YiSanchez donation QR code" width="260">

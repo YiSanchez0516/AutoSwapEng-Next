@@ -8,6 +8,8 @@
 > 本仓库是在原项目基础上的**彻底重写**：重做了窗口捕获、OCR 解析、答案决策、手写笔画和错误处理，并新增 OPPO 互联投屏适配。
 > 原项目版权归 **ZRedTea** 所有，本项目与原项目作者无隶属关系。
 
+> **适配范围**：目前**仅针对 OPPO 互联（手机投屏）** 做了适配。其他品牌/其他投屏软件（华为多屏协同、小米妙享、vivo 互传、scrcpy 等）没有逐一测试，使用时请在 `setup` 里**自定义框选投屏窗口**（只框手机画面，不含工具栏），必要时再校准键盘、手写区和听力按钮。
+
 ## 功能
 
 - **自动识别题型**：单词选择、看释义拼写、手写板、听力、学习卡片
@@ -15,7 +17,7 @@
 - **单词选择**：本地词库 + ECDICT + 在线词典综合评分；识别红/绿判题底色，答错自动换选项
 - **拼写**：中文释义反查英文候选；自动定位屏幕键盘并点击输入；候选答错自动重试
 - **手写**：内置单笔画字母表，用 PyAutoGUI 在书写区画出单词；支持整词、逐字母、每字母一格
-- **投屏适配**：自动识别 OPPO 互联 / O+ Connect / 跨屏互联 / scrcpy 等竖屏投屏窗口
+- **投屏适配**：自动识别 OPPO 互联 / O+ Connect / 跨屏互联 / scrcpy 等竖屏投屏窗口（目前仅实测 OPPO 互联，其他品牌请在 `setup` 里自定义框选）
 - **安全保护**：误选桌面/横屏窗口会拒绝执行；黑屏检测；鼠标移到屏幕角落立即急停
 - **可诊断**：崩溃写入 `logs/crash.log`；`doctor.bat` 一键生成环境/截图/OCR 报告
 
@@ -35,7 +37,7 @@
 ## 环境要求
 
 - Windows 10 / 11
-- 电脑上运行手机投屏工具（推荐 **OPPO 互联** 的“手机投屏”，或 scrcpy / Escrcpy）
+- 电脑上运行手机投屏工具（已适配 **OPPO 互联** 的“手机投屏”；其他品牌或其他投屏软件请用 `setup` 自定义框选投屏窗口）
 - 能正常显示「翻转外语」小程序的答题页面
 - 首次安装会下载 Python 3.12、PaddlePaddle、PaddleOCR 和中文模型（约 500–800 MB）
 
@@ -81,7 +83,9 @@ run.bat doctor                 :: 生成诊断报告
 
 运行中把鼠标猛地移到屏幕左上角即可急停。
 
-## OPPO 互联适配说明
+## 投屏适配说明（目前仅适配 OPPO 互联）
+
+> 目前**只针对 OPPO 互联的“手机投屏”** 做过适配。华为多屏协同、小米妙享、vivo 互传、scrcpy 等其他投屏方式没有逐一测试，请用 `setup` 自定义框选投屏窗口后再使用。
 
 - 自动识别标题包含 `OPPO`、`O+ Connect`、`互联`、`跨屏`、`投屏`、`手机投屏`、`OnePlus`、`一加`、`realme` 等关键词的**竖屏窗口**
 - OPPO 互联的横屏控制面板不会被误选
@@ -248,6 +252,7 @@ data/
 install.bat/.ps1     安装脚本
 run.bat              启动脚本
 doctor.bat           诊断脚本
+docs/donate.jpg      README 赞赏码
 ```
 
 ## 免责声明
@@ -265,3 +270,10 @@ doctor.bat           诊断脚本
 - [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) — 文字识别
 - [ECDICT](https://github.com/skywind3000/ECDICT) — 离线英汉词典
 - [PyAutoGUI](https://github.com/asweigart/pyautogui)、[mss](https://github.com/BoboTiG/python-mss)、[PyGetWindow](https://github.com/asweigart/pygetwindow)
+
+## 赞赏
+
+如果对你有帮助，可以给我投喂哦
+
+<img src="docs/donate.jpg" alt="YiSanchez 的赞赏码" width="260">
+
