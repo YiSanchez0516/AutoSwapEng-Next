@@ -67,7 +67,7 @@ python -m venv .venv
 
 The program automatically recognises whether it is in the **study-card / quiz / reinforcement** stage and clicks "进入强化" (Enter reinforcement) on the study summary page.
 
-Listening dialogues: the flow clicks the **left speaker once**, then clicks the **bottom-right arrow 3 times** to submit and advance. The right waveform only replays your own recording and the center microphone records; neither is clicked. If positions are off, run `setup` step 5 and calibrate only the play and bottom-right arrow positions.
+Listening dialogues: the flow clicks the **left speaker once**, then clicks the **bottom-right arrow up to 50 times**. After every click it compares the question area and stops as soon as the next listening screen appears, then plays that item. The right waveform only replays your own recording and the center microphone records; neither is clicked. If positions are off, run `setup` step 5 and calibrate only the play and bottom-right arrow positions.
 
 Common commands:
 
@@ -163,7 +163,8 @@ The script filters OCR mistakes and concatenated fragments (e.g. `agree -> 同�
 | `listen.play` / `listen.next` | Screen coordinates of the play speaker and bottom-right submit/next arrow (`setup` step 5) |
 | `listen.auto_flow` | `true`: play once then click the arrow repeatedly; `false`: play only, default `true` |
 | `listen.play_wait` | Seconds to wait after playing, default 2.0 |
-| `listen.arrow_clicks` / `listen.arrow_interval` | Arrow click count/interval, default 3 / 0.4 s |
+| `listen.arrow_clicks` / `listen.arrow_interval` | Max arrow click count/interval, default 50 / 0.2 s |
+| `listen.stop_on_change` | Stop clicking as soon as the next screen appears, default `true` |
 | `auto_enter_reinforce` | Enter reinforcement automatically after the study summary, default `true` |
 | `pack_memory` | Remember pack words and mistakes between runs, default `true` |
 | `write_canvas` | Handwriting pad region `[x1, y1, x2, y2]` |
@@ -207,11 +208,13 @@ See [`config.example.json`](config.example.json).
 **Wrong listening click position**
 
 - Dialogue page: left speaker (play), center microphone (record), right waveform (replay your recording), bottom-right arrow (submit + next)
-- The flow only clicks the left speaker once and the bottom-right arrow three times; it never clicks record or the waveform
+- The flow only clicks the left speaker once and the bottom-right arrow (up to 50 times); it stops as soon as the next screen appears
 - Defaults use screenshot-derived ratios; if the mirror window has a title bar or scaling, run `setup` step 5 and calibrate play + arrow
 - Calibrated coordinates are only valid while the window stays in place
 - Tune `listen.arrow_clicks` / `listen.arrow_interval` to change the click count or interval
+- If a toast causes a false stop, set `listen.stop_on_change` to `false`
 - To play without auto-advancing, set `listen.auto_flow` to `false`
+- The window now stays open after a normal run; if it still closes instantly, check `logs/crash.log` and run `doctor.bat`
 
 **Reviewing mistakes / OCR errors**
 

@@ -2,6 +2,7 @@
 chcp 65001 >nul
 title 翻转外语自动化助手
 setlocal
+set "FZ_BATCH=1"
 set "ROOT=%~dp0"
 set "PY=%ROOT%.venv\Scripts\python.exe"
 if not exist "%PY%" (

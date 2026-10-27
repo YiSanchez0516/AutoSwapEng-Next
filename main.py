@@ -104,6 +104,7 @@ def main() -> None:
     preview.add_argument("--grid", action="store_true", help="输出字母表")
 
     args = parser.parse_args(argv)
+    launched_from_menu = args.command is None
 
     cfg = Config.load()
     override_config(cfg, args)
@@ -140,6 +141,14 @@ def main() -> None:
         preview_strokes(getattr(args, "word", "hello"), getattr(args, "grid", False))
     else:
         parser.print_help()
+
+    # 双击 main.py 时, 正常结束也停住窗口; run.bat 会设置 FZ_BATCH 自行暂停
+    if launched_from_menu and not os.environ.get("FZ_BATCH"):
+        try:
+            if sys.stdin and sys.stdin.isatty():
+                input("\n运行结束，按回车键退出...")
+        except (EOFError, KeyboardInterrupt):
+            pass
 
 
 def _normalize_argv(argv: list[str]) -> list[str]:

@@ -20,8 +20,9 @@
     "next": null,
     "auto_flow": true,
     "play_wait": 2.0,
-    "arrow_clicks": 3,
-    "arrow_interval": 0.4
+    "arrow_clicks": 50,
+    "arrow_interval": 0.2,
+    "stop_on_change": true
   },
   "auto_enter_reinforce": true,
   "pack_memory": true,

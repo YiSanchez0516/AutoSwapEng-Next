@@ -36,12 +36,14 @@ DEFAULTS: dict[str, Any] = {
         "record": None,
         "submit": None,
         "next": None,
-        # true: 播放一次 -> 连续点击右下角箭头; false: 只播放
+        # true: 播放一次 -> 连续点击右下角箭头, 直到界面切换
         "auto_flow": True,
-        # 播放后等待秒数, 以及右下角箭头连点次数/间隔
+        # 播放后等待秒数, 以及右下角箭头最多连点次数/间隔
         "play_wait": 2.0,
-        "arrow_clicks": 3,
-        "arrow_interval": 0.4,
+        "arrow_clicks": 50,
+        "arrow_interval": 0.2,
+        # 检测到下一题界面后立即停止连点
+        "stop_on_change": True,
     },
     # 学习结算后自动进入“强化/巩固”阶段
     "auto_enter_reinforce": True,

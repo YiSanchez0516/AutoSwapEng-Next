@@ -110,7 +110,8 @@ class Runner:
             if self.cfg.get("log_ocr"):
                 self._log_ocr(lines)
 
-            key = f"{state.current}|{state.word or ''}|" + "|".join(state.prompt)
+            key = (f"{state.current}|{state.word or ''}|"
+                   f"{hash(scene.compact) & 0xffff}|" + "|".join(state.prompt))
             if key == self.last_word:
                 self.stale += 1
             else:
@@ -535,14 +536,56 @@ class Runner:
             time.sleep(float(self.cfg.get("listen.play_wait", 2.0) or 2.0))
             return
         if flow and phase == "played":
-            clicks = int(self.cfg.get("listen.arrow_clicks", 3) or 3)
-            interval = float(self.cfg.get("listen.arrow_interval", 0.4) or 0.4)
-            for index in range(max(1, clicks)):
-                self._click_fixed(rect, key, "next", (0.927, 0.910), "提交/下一题")
-                if index < clicks - 1:
-                    time.sleep(interval)
-            self.listen_state[key] = "done"
-            time.sleep(0.6)
+            changed = self._hammer_arrows(rect)
+            if changed:
+                # 已经进入下一题: 清掉旧状态, 下一轮会对新界面重新播放
+                self.listen_state.pop(key, None)
+                self._action_time[key] = time.time()
+                self.log("   听力: 检测到下一界面, 已停止连点")
+            else:
+                self.listen_state[key] = "done"
+                self.log("   听力: 连点结束, 等待界面变化")
+
+    def _screen_signature(self, rect: Rect) -> bytes | None:
+        try:
+            image, _ = self.capture.grab()
+        except Exception:
+            return None
+        width, height = image.width, image.height
+        crop = image.crop((int(width * 0.05), int(height * 0.08),
+                           int(width * 0.95), int(height * 0.75)))
+        return crop.convert("L").resize((32, 48)).tobytes()
+
+    @staticmethod
+    def _signature_changed(before: bytes | None, after: bytes | None) -> bool:
+        if not before or not after or len(before) != len(after):
+            return False
+        diff = sum(abs(a - b) for a, b in zip(before, after)) / len(before)
+        return diff > 6.0
+
+    def _hammer_arrows(self, rect: Rect) -> bool:
+        """连点右下角箭头, 每点一次检测题目区域是否变化, 变化即停."""
+        clicks = max(1, int(self.cfg.get("listen.arrow_clicks", 50) or 50))
+        interval = float(self.cfg.get("listen.arrow_interval", 0.2) or 0.2)
+        stop_on_change = bool(self.cfg.get("listen.stop_on_change", True))
+        point = self._listen_point("next", rect) or rect.point(0.927, 0.910)
+        self.log(f"   听力: 连点右下箭头, 最多 {clicks} 次")
+        baseline = self._screen_signature(rect)
+        for index in range(clicks):
+            self.controller.click(*point, settle=0)
+            time.sleep(interval)
+            if not stop_on_change:
+                continue
+            current = self._screen_signature(rect)
+            if self._signature_changed(baseline, current):
+                # 再等半秒确认一次, 避免“请先录音”之类提示气泡导致误判
+                time.sleep(0.35)
+                confirm = self._screen_signature(rect)
+                if self._signature_changed(baseline, confirm):
+                    self.log(f"   听力: 第 {index + 1} 次点击后界面已变化")
+                    return True
+                baseline = confirm or baseline
+        return False
 
     def _click_fixed(self, rect: Rect, key: str, name: str,
                      fallback: tuple[float, float], label: str) -> None:
